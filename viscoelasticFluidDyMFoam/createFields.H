@@ -69,5 +69,5 @@ Info<< "Reading field rAU if present\n" << endl;
 #   include "UEqn.H"
     momentumPredictor = momentumPredictorSave;
 
-    rAU = 1.0/UEqn.A();
+    rAU = 1.0/UEqn().A();
 }
