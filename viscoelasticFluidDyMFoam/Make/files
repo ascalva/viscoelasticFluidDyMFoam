@@ -1,0 +1,3 @@
+viscoelasticFluidDyMFoam.C
+
+EXE = $(FOAM_APPBIN)/viscoelasticFluidDyMFoam

@@ -1,0 +1,16 @@
+EXE_INC = \
+    -I$(LIB_SRC)/dynamicMesh/dynamicFvMesh/lnInclude \
+    -I$(LIB_SRC)/dynamicMesh/dynamicMesh/lnInclude \
+    -I$(LIB_SRC)/finiteVolume/lnInclude  \
+    -I$(LIB_SRC)/transportModels/viscoelastic/lnInclude \
+    -I$(LIB_SRC)/meshTools/lnInclude
+
+EXE_LIBS = \
+    -ldynamicFvMesh \
+    -ldynamicMesh \
+    -lengine \
+    -lfiniteVolume \
+    -lviscoelasticTransportModels \
+    -lmeshTools \
+    -llduSolvers \
+    -L$(MESQUITE_LIB_DIR) -lmesquite
