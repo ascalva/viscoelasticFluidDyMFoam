@@ -1,5 +1,3 @@
-// Momentum predictor
-
 tmp<fvVectorMatrix> UEqn
 (
     fvm::ddt(U)
@@ -7,6 +5,6 @@ tmp<fvVectorMatrix> UEqn
   - visco.divTau(U)
 );
 
-if( momentumPredictor ) {
-    solve(UEqn() == -fvc::grad(p));
-}
+UEqn().relax();
+
+solve(UEqn() == -fvc::grad(p));

@@ -27,6 +27,7 @@
     // Initialise flux with interpolated velocity
     phi = fvc::interpolate(U) & mesh.Sf();
 
+    /// icoDyMFoam uses following:
     if (pcorr.needReference())
     {
         fvc::makeRelative(phi, U);
@@ -34,17 +35,22 @@
         fvc::makeAbsolute(phi, U);
     }
 
-    for(int nonOrth = 0; nonOrth <= nNonOrthCorr; nonOrth++)
+    /// pimpleDyMFoam uses following:
+    // adjustPhi(phi, U, pcorr);
+
+    mesh.schemesDict().setFluxRequired(pcorr.name());
+
+    while (piso.correctNonOrthogonal())
     {
         fvScalarMatrix pcorrEqn
         (
-            fvm::laplacian(rAU, pcorr) == fvc::div(phi)
+            fvm::laplacian(rUA, pcorr) == fvc::div(phi)
         );
 
         pcorrEqn.setReference(pRefCell, pRefValue);
         pcorrEqn.solve();
 
-        if (nonOrth == nNonOrthCorr)
+        if (piso.finalNonOrthogonalIter())
         {
             phi -= pcorrEqn.flux();
         }

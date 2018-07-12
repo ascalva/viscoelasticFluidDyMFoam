@@ -1,12 +1,5 @@
 #include "readTimeControls.H"
-#include "readPISOControls.H"
 
-bool correctPhi = false;
-if( piso.found("correctPhi") ) {
-    correctPhi = Switch(piso.lookup("correctPhi"));
-}
+correctPhi = piso.dict().lookupOrDefault("correctPhi", false);
 
-bool checkMeshCourantNo = false;
-if( piso.found("checkMeshCourantNo") ) {
-    checkMeshCourantNo = Switch(piso.lookup("checkMeshCourantNo"));
-}
+checkMeshCourantNo = piso.dict().lookupOrDefault("checkMeshCourantNo", false);

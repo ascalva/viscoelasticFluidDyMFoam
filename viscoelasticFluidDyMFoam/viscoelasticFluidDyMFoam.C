@@ -1,15 +1,16 @@
 /*---------------------------------------------------------------------------*\
   =========                 |
   \\      /  F ield         | foam-extend: Open Source CFD
-   \\    /   O peration     |
+   \\    /   O peration     | Version:     4.0
     \\  /    A nd           |
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 Application
-    viscoelasticFluidDyMFoam
+    viscoelasticFluidFoam
 
 Description
-    Transient solver for incompressible, laminar flow of viscoelastic fluids.
+    Transient solver for incompressible, laminar flow of viscoelastic fluids
+    with dynamic mesh.
 
 Author
     Alberto Serrano. All rights reserved
@@ -17,10 +18,9 @@ Author
 \*---------------------------------------------------------------------------*/
 
 #include "fvCFD.H"
-#include "viscoelasticModel.H"
-#include "extrapolatedCalculatedFvPatchFields.H"
-//#include "extrapolatedCalculatedFvPatchField.H"
 #include "dynamicFvMesh.H"
+#include "viscoelasticModel.H"
+#include "pisoControl.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -30,11 +30,14 @@ int main(int argc, char *argv[])
 #   include "setRootCase.H"
 
 #   include "createTime.H"
-// #   include "createMesh.H"
 #   include "createDynamicFvMesh.H"
-#   include "initContinuityErrs.H"
+
+    pisoControl piso(mesh);
+
 #   include "initTotalVolume.H"
 #   include "createFields.H"
+#   include "initContinuityErrs.H"
+#   include "createControls.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -42,7 +45,6 @@ int main(int argc, char *argv[])
 
     while (runTime.run())
     {
-
 #       include "readControls.H"
 #       include "checkTotalVolume.H"
 
@@ -56,9 +58,7 @@ int main(int argc, char *argv[])
 
         Info<< "Time = " << runTime.timeName() << nl << endl;
 
-
-        /// ADDED start
-
+/////////////////////////// ADDED //////////////////////////
         bool meshChanged = mesh.update();
         reduce(meshChanged, orOp<bool>());
 
@@ -78,25 +78,17 @@ int main(int argc, char *argv[])
         {
 #           include "meshCourantNo.H"
         }
-
-// #       include "UEqn.H"
-
-        /// end
-
+////////////////////// END OF ADDED /////////////////////////
 
         // Pressure-velocity SIMPLE corrector loop
-        for (int corr = 0; corr < nCorr; corr++)
+        while (piso.correct())
         {
-
+            // Momentum predictor (to be added to UEqn)
 #           include "UEqn.H"
 
-            // Does the order of the next two lines matter?
-            UEqn().relax(); //What's relax?
+            rUA = 1.0/UEqn().A();
 
-            p.boundaryField().updateCoeffs();
-
-            rAU = 1.0/UEqn().A(); // from rUA -> rAU (why?)
-            U = rAU*UEqn().H();
+            U = rUA*UEqn().H();
             UEqn.clear();
             phi = fvc::interpolate(U) & mesh.Sf();
             adjustPhi(phi, U, p);
@@ -105,24 +97,17 @@ int main(int argc, char *argv[])
             p.storePrevIter();
 
             // Non-orthogonal pressure corrector loop
-            for (int nonOrth=0; nonOrth<=nNonOrthCorr; nonOrth++)
+            while (piso.correctNonOrthogonal())
             {
                 fvScalarMatrix pEqn
                 (
-                    fvm::laplacian(rAU, p) == fvc::div(phi)
+                    fvm::laplacian(rUA, p) == fvc::div(phi)
                 );
 
                 pEqn.setReference(pRefCell, pRefValue);
-                // pEqn.solve();
+                pEqn.solve();
 
-                // NEW start
-                if( corr == nCorr - 1 && nonOrth == nNonOrthCorr ) {
-                    pEqn.solve(mesh.solutionDict().solver(p.name() + "Final"));
-                } else {
-                    pEqn.solve(mesh.solutionDict().solver(p.name()));
-                } // end
-
-                if (nonOrth == nNonOrthCorr)
+                if (piso.finalNonOrthogonalIter())
                 {
                     phi -= pEqn.flux();
                 }
@@ -133,11 +118,11 @@ int main(int argc, char *argv[])
             // Explicitly relax pressure for momentum corrector
             p.relax();
 
-            // Make the fluxes relative to the mesh motion (ADDED)
+            // Make the fluxes relative to the mesh motion
             fvc::makeRelative(phi, U);
 
             // Momentum corrector
-            U -= rAU*fvc::grad(p);
+            U -= rUA*fvc::grad(p);
             U.correctBoundaryConditions();
 
             visco.correct();
